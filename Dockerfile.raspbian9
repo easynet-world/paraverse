@@ -1,0 +1,77 @@
+FROM raspbian/stretch
+ENV container docker
+
+ARG CURRENT
+ARG ID
+ARG DEBIAN_FRONTEND=noninteractive
+
+USER root
+
+RUN apt-get -y update
+RUN apt-get -y upgrade
+
+RUN apt install -y \
+    build-essential \
+    curl \
+    git \
+    gzip \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    llvm \
+    make \
+    openssl \
+    policycoreutils \
+    software-properties-common \
+    sudo \
+    tk-dev \
+    unzip \
+    wget \
+    xz-utils \
+    zip \
+    zlib1g-dev
+
+# install aws cli
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
+
+# install JDK
+RUN apt-get install -y openjdk-8-jdk
+
+# install jenv
+RUN git clone https://github.com/jenv/jenv.git /usr/lib/jenv
+RUN ln -s /usr/lib/jenv/bin/jenv /usr/bin/jenv
+RUN echo 'eval "$(jenv init -)"' >> ~/.bashrc
+RUN jenv init -
+RUN jenv add /usr/lib/jvm/java-8-openjdk-armhf
+RUN jenv global 1.8
+RUN jenv local 1.8
+
+# install pyenv
+RUN curl https://pyenv.run | bash
+RUN cp -rp $HOME/.pyenv /usr/lib/pyenv
+RUN ln -s /usr/lib/pyenv/bin/pyenv /usr/bin/pyenv
+RUN apt-get install patch
+#RUN pyenv install 2
+#RUN pyenv install 3
+
+# install nodejs
+RUN apt-get install -y nodejs
+RUN apt-get install -y npm
+
+# install postgresql client
+RUN apt-get install -y postgresql-client
+
+# install redis tools
+RUN apt-get install -y redis-tools
+
+RUN echo "PARAVERSE-RASPBERRY-PI" > /tmp/hostname
+RUN echo 'PS1="\t:\e[0;31m\h\e[m:\u:\w/>"' >> ~/.bashrc
+
+CMD ["/usr/bin/bash"]

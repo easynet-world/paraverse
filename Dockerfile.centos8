@@ -1,0 +1,104 @@
+FROM centos:8
+RUN cd /etc/yum.repos.d/
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+
+ENV container docker
+
+ARG CURRENT
+ARG ID
+
+USER root
+
+RUN yum install -y \
+    bzip2-devel \
+    dnf \
+    git \
+    gzip \
+    libffi \
+    libffi-devel \
+    openssl \
+    openssl-devel \
+#    openssl11-devel \
+#    openssl11-lib \
+    perl-core \
+    policycoreutils \
+    readline-devel \
+    sudo \
+    selinux-policy-devel \
+    selinux-policy-targeted \
+    sqlite-devel \
+    unzip \
+    which \
+    wget \
+    zip \
+    zlib \
+    zlib-devel
+
+# install aws cli
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
+
+# install k8s
+#RUN setenforce 0
+COPY $CURRENT/k8s/kubernetes.repo /etc/yum.repos.d/kubernetes.repo
+RUN touch /.autorelabel
+RUN sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+RUN yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+#RUN sudo systemctl enable --now kubelet
+
+# install zulu JDK
+RUN yum install -y https://cdn.azul.com/zulu/bin/zulu-repo-1.0.0-1.noarch.rpm
+RUN yum install -y zulu8-jdk
+RUN yum install -y zulu11-jdk
+RUN yum install -y zulu17-jdk
+
+#
+RUN dnf groupinstall -y "Development Tools"
+RUN dnf install -y zlib zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel libffi openssl
+
+# install openssl
+#RUN cd /usr/local/src/ && \
+#    wget --no-check-certificate https://www.openssl.org/source/openssl-1.1.1c.tar.gz && \
+#    tar -xf openssl-1.1.1c.tar.gz && \
+#    cd openssl-1.1.1c && \
+#    ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib && \
+#     make && \
+#     make install
+#RUN echo "/usr/local/ssl/lib" > /etc/ld.so.conf.d/openssl-1.1.1c.conf
+#RUN ldconfig -v
+#RUN mv /bin/openssl /bin/openssl.backup
+#COPY $CURRENT/openssl/openssl.sh /etc/profile.d/openssl.sh
+#RUN chmod +x /etc/profile.d/openssl.sh
+#RUN source /etc/profile.d/openssl.sh
+#RUN echo $PATH
+#RUN which openssl
+#RUN openssl version -a
+
+# install jenv
+RUN git clone https://github.com/jenv/jenv.git /usr/lib/jenv
+RUN ln -s /usr/lib/jenv/bin/jenv /usr/bin/jenv
+#RUN echo 'export PATH="/usr/lib/jenv/bin:$PATH"' >> ~/.bashrc
+RUN echo 'eval "$(jenv init -)"' >> ~/.bashrc
+#ENV PATH=/Users/$ID/.jenv/bin:$PATH
+RUN jenv init -
+RUN jenv add /usr/lib/jvm/zulu8
+RUN jenv add /usr/lib/jvm/zulu11
+RUN jenv add /usr/lib/jvm/zulu17
+RUN jenv global 1.8
+RUN jenv local 1.8
+
+# install pyenv
+RUN curl https://pyenv.run | bash
+RUN cp -rp $HOME/.pyenv /usr/lib/pyenv
+RUN ln -s /usr/lib/pyenv/bin/pyenv /usr/bin/pyenv
+RUN echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+RUN pyenv install 2
+RUN pyenv install 3
+
+# 
+RUN echo "PARAVERSE-CENTOS8" > /tmp/hostname
+RUN echo 'PS1="\t:\e[0;31m\h\e[m:\u:\w/>"' >> ~/.bashrc
+
+CMD ["/usr/bin/bash"]
